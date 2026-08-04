@@ -1,59 +1,103 @@
 import os
+import json
+import time
 from dotenv import load_dotenv
 from google import genai
 
-# Load API key
 load_dotenv()
 
-# Create Gemini client
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
 
 def analyze_resume(resume_text, job_description):
 
     prompt = f"""
-    You are an expert ATS and HR recruiter.
+You are an expert ATS Resume Analyzer.
 
-    Analyze the following resume based on the given job description.
+Analyze the resume against the job description.
 
-    Job Description:
-    {job_description}
+Return ONLY valid JSON.
 
-    Resume:
-    {resume_text}
+{{
+    "ats_score": 0,
+    "professional_summary": "",
+    "matching_skills": [],
+    "missing_skills": [],
+    "strengths": [],
+    "weaknesses": [],
+    "suggestions": []
+}}
 
-    Return your response in proper Markdown format.
+Job Description:
+{job_description}
 
-# ATS Score
-Score: XX/100
+Resume:
+{resume_text}
+"""
 
-# Professional Summary
-...
+    last_error = ""
 
-# Matching Skills
-- Skill 1
-- Skill 2
-- Skill 3
+    for _ in range(3):
 
-# Missing Skills
-- Skill 1
-- Skill 2
+        try:
 
-# Strengths
-- Point 1
-- Point 2
+            response = client.models.generate_content(
+                model="gemini-3.5-flash",
+                contents=prompt
+            )
 
-# Weaknesses
-- Point 1
-- Point 2
+            cleaned = response.text.strip()
+            cleaned = cleaned.replace("```json", "")
+            cleaned = cleaned.replace("```", "")
+            cleaned = cleaned.strip()
 
-# Suggestions
-- Suggestion 1
-- Suggestion 2
-Only return the analysis. Do not include any introduction or conclusion."""
+            return json.loads(cleaned)
+
+        except Exception as e:
+
+            last_error = str(e)
+            time.sleep(2)
+
+    return {
+        "ats_score": 0,
+        "professional_summary": "Gemini failed.",
+        "matching_skills": [],
+        "missing_skills": [],
+        "strengths": [],
+        "weaknesses": [],
+        "suggestions": [last_error]
+    }
+
+
+def extract_skills(text):
+
+    prompt = f"""
+Extract all technical skills from the text.
+
+Return ONLY a JSON array.
+
+Example:
+
+[
+    "Python",
+    "FastAPI",
+    "Docker",
+    "AWS"
+]
+
+Text:
+
+{text}
+"""
 
     response = client.models.generate_content(
-        model="gemini-flash-latest",
+        model="gemini-3.5-flash",
         contents=prompt
     )
 
-    return response.text
+    cleaned = response.text.strip()
+    cleaned = cleaned.replace("```json", "")
+    cleaned = cleaned.replace("```", "")
+    cleaned = cleaned.strip()
+
+    return json.loads(cleaned)
