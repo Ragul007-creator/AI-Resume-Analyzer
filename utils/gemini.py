@@ -54,19 +54,45 @@ Resume:
             return json.loads(cleaned)
 
         except Exception as e:
-
             last_error = str(e)
-            time.sleep(2)
+            print("Gemini Error:", last_error)
+
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                return {
+                    "ats_score": 0,
+                    "professional_summary": "Daily Gemini API quota reached.",
+                    "matching_skills": [],
+                    "missing_skills": [],
+                    "strengths": [],
+                    "weaknesses": [],
+                    "suggestions": [
+                        "The AI analysis is temporarily unavailable because the daily Gemini free-tier limit has been reached. Please try again tomorrow."
+                    ]
+                }
+                if "503" in str(e) or "UNAVAILABLE" in str(e):
+                    return {
+                        "ats_score": 0,
+                        "professional_summary": "Gemini servers are currently busy.",
+                        "matching_skills": [],
+                        "missing_skills": [],
+                        "strengths": [],
+                        "weaknesses": [],
+                        "suggestions": [
+                            "Google Gemini is experiencing high traffic. Please try again in a few minutes."
+                        ]
+                    }
+
+            time.sleep(3)
 
     return {
-        "ats_score": 0,
-        "professional_summary": "Gemini failed.",
-        "matching_skills": [],
-        "missing_skills": [],
-        "strengths": [],
-        "weaknesses": [],
-        "suggestions": [last_error]
-    }
+    "ats_score": 0,
+    "professional_summary": f"Gemini failed: {last_error}",
+    "matching_skills": [],
+    "missing_skills": [],
+    "strengths": [],
+    "weaknesses": [],
+    "suggestions": [last_error]
+}
 
 
 def extract_skills(text):
